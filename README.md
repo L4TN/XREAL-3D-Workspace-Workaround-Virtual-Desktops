@@ -16,9 +16,12 @@ This project turns that single screen into a **multi-screen illusion**:
 
 - Create **N Windows Virtual Desktops** (commonly 3: Left / Center / Right)
 - Place apps across desktops
-- Use head yaw (gyro) to **switch desktops** when you look left / center / right
+- Run **one Python script** (no extra Python packages required)
+- The script **automatically starts the head tracker**
+- Head yaw controls desktop switching
 
-Result: a “3D workspace” feeling using **Windows’ own desktops** (lightweight & stable).
+Result: a “3D workspace” feeling using **Windows’ own desktops**  
+→ lightweight, stable, pixel-perfect.
 
 ---
 
@@ -28,11 +31,11 @@ Full 3D workspaces can:
 - consume more CPU/GPU,
 - introduce rendering latency,
 - slightly reduce image sharpness due to reprojection or scaling,
-- be more sensitive to tracking glitches.
+- be more sensitive to tracking glitches and driver issues.
 
 This project:
 - uses **native HDMI resolution** (no reprojection, no rescaling),
-- does **no 3D rendering**,
+- does **no 3D rendering at all**,
 - keeps text and UI **pixel-perfect**,
 - offloads “multi-monitor behavior” to **Windows Virtual Desktops**.
 
@@ -40,38 +43,52 @@ This project:
 
 ## Features
 
-- ✅ Head-yaw driven switching (Left / Center / Right…)
-- ✅ Native HDMI resolution (no visual degradation)
-- ✅ Works on a static HDMI display (XREAL as a monitor)
-- ✅ Hysteresis + cooldown to reduce flicker / spam switching
-- ✅ Optional auto-start of the tracker EXE
-- ✅ Supports **N desktops** (most people start with 3)
+- ✅ Head-yaw driven switching (Left / Center / Right)
+- ✅ **Native HDMI resolution** (no visual degradation)
+- ✅ Static display = higher stability
+- ✅ Hysteresis, cooldown **and dwell confirmation**
+- ✅ **Automatically starts PhoenixHeadTracker.exe**
+- ✅ No external Python dependencies (standard library only)
+- ✅ Supports **N desktops** (most users start with 3)
 
 ---
 
-## How it works
+## How it works (Sequence Diagram)
 
-1. A head tracker (example: `PhoenixHeadTracker.exe`) outputs **UDP packets** with yaw/pitch/roll.
-2. The Python script listens on a UDP port, extracts **yaw**.
-3. Yaw is mapped into zones (Left / Center / Right).
-4. When you enter a zone (with hysteresis + cooldown), the script switches Windows desktops via:
-   - `VirtualDesktopAccessor.dll` (recommended)
+```mermaid
+sequenceDiagram
+    participant User
+    participant Python as Python Script
+    participant Phoenix as PhoenixHeadTracker.exe
+    participant OS as Windows Virtual Desktops
+    participant VDA as VirtualDesktopAccessor.dll
+
+    User->>Python: Run script (python 3.11)
+    Python->>Phoenix: Auto-start PhoenixHeadTracker.exe
+    Phoenix-->>Python: UDP packets (yaw, pitch, roll)
+
+    loop Each UDP packet
+        Python->>Python: Parse yaw angle
+        Python->>Python: Apply hysteresis + dwell + cooldown
+        Python->>VDA: GoToDesktopNumber(target)
+        VDA->>OS: Switch virtual desktop
+        OS-->>User: Visible desktop changes
+    end
+```
 
 ---
 
 ## Requirements
 
 - Windows 10/11
-- Python 3.10+ recommended
+- Python **3.11+**
 - XREAL glasses connected as a display (HDMI / adapter)
 - Windows Virtual Desktops enabled
-- A head-tracking source that sends yaw over UDP (example: PhoenixHeadTracker)
+- PhoenixHeadTracker (included)
 
 ---
 
 ## Project files
-
-Typical folder (example):
 
 ```
 .
@@ -82,66 +99,44 @@ Typical folder (example):
 └─ main_udp_yaw_desktop_switcher.py
 ```
 
-> Tip: keep the EXE/DLLs in the same folder as the Python script (simplest path handling).
-
 ---
 
-## Quick start
+## How to run
 
-### 1) Create your Virtual Desktops
-- `Win + Ctrl + D` → create a new desktop
-- `Win + Ctrl + ← / →` → switch desktops
-
-Create 3 desktops (recommended to start):
-- Desktop 1 = Left
-- Desktop 2 = Center
-- Desktop 3 = Right
-
-### 2) Organize your apps
-Example setup:
-- Desktop 1: Browser / Docs
-- Desktop 2: IDE
-- Desktop 3: Terminal / Monitoring
-
-### 3) Start the head tracker
-Run:
-- `PhoenixHeadTracker.exe`
-
-Make sure the UDP port configured in the tracker matches the script’s `PORT`.
-
-### 4) Run the Python switcher
-Open a terminal in the project folder:
+1. Create virtual desktops (`Win + Ctrl + D`)
+2. Organize your apps (Left / Center / Right)
+3. Run:
 
 ```bash
 python main_udp_yaw_desktop_switcher.py
 ```
 
-Now look left/right — the script should switch desktops as you cross thresholds.
+The script automatically launches the tracker.
 
 ---
 
 ## Configuration
 
-Open `main_udp_yaw_desktop_switcher.py` and adjust the values (names may vary):
+All configuration is done inside the Python script.
 
 | Setting | Meaning | Typical |
 |---|---|---|
-| `PORT` | UDP port to listen | `4242` (must match tracker) |
-| `NR_DESKTOPS` | number of desktops | `3` |
-| `ENABLE_DESKTOP_SWITCH` | real switching vs simulation | `True/False` |
-| `ANGLE` | degrees to trigger left/right | `25–40` |
-| `HYST_DEG` | hysteresis to avoid threshold jitter | `4–10` |
-| `COOLDOWN_MS` | min time between switches | `250–800` |
-| `IGNORE_FIRST_SECONDS` | warm-up time | `3–8` |
+| `PORT` | UDP port | 4242 |
+| `ANGLE` | Yaw threshold | 25–40 |
+| `HYST_DEG` | Exit hysteresis | 4–10 |
+| `DWELL_CONFIRM_MS` | Time inside zone | 300–700 |
+| `COOLDOWN_MS` | Min time between switches | 250–800 |
+| `CENTER_DESKTOP` | Central desktop | 2 |
+| `AUTO_START_PHOENIX` | Auto-launch tracker | True |
 
 ---
 
 ## Third-party components / Credits
 
-- VirtualDesktopAccessor.dll — https://github.com/Ciantic/VirtualDesktopAccessor  
-- AirAPI_Windows.dll — https://github.com/MSmithDev/AirAPI_Windows  
-- hidapi.dll — https://github.com/libusb/hidapi  
-- PhoenixHeadTracker.exe — https://github.com/iVideoGameBoss/PhoenixHeadTracker  
+- VirtualDesktopAccessor.dll — https://github.com/Ciantic/VirtualDesktopAccessor
+- AirAPI_Windows.dll — https://github.com/MSmithDev/AirAPI_Windows
+- hidapi.dll — https://github.com/libusb/hidapi
+- PhoenixHeadTracker.exe — https://github.com/iVideoGameBoss/PhoenixHeadTracker
 
 ---
 
@@ -154,3 +149,5 @@ This project is **not affiliated** with XREAL, Nebula, VertoXR, or Microsoft.
 ## License
 
 GNU GPL v3.0 — see `LICENSE`.
+
+Third-party binaries remain under their respective licenses.
