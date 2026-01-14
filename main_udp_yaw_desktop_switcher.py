@@ -27,7 +27,7 @@ PHOENIX_ARGS = []                 # se precisar passar args, coloque aqui
 PHOENIX_START_DELAY_SEC = 0.20    # pequeno delay pós-start (não bloqueia muito)
 PHOENIX_DETACH = True             # True = não “prende” no console do Python
 
-ANGLE = 30.0
+ANGLE = 15.0
 RIGHT_ENTER = -ANGLE
 LEFT_ENTER  =  ANGLE
 RIGHT_EXIT  = RIGHT_ENTER + HYST_DEG
@@ -238,12 +238,12 @@ pending_since = 0.0
 
 vda = load_vda() if ENABLE_DESKTOP_SWITCH else None
 
-# Não troca nada ao iniciar — só lê o desktop REAL (sem clamp)
-if ENABLE_DESKTOP_SWITCH:
-    actual_desktop_start = get_current_desktop_1based(vda)
-    print(f"[INIT] Desktop REAL ao iniciar (sem trocar): {actual_desktop_start}")
-else:
-    actual_desktop_start = CENTER_DESKTOP
+# # Não troca nada ao iniciar — só lê o desktop REAL (sem clamp)
+# if ENABLE_DESKTOP_SWITCH:
+#     actual_desktop_start = get_current_desktop_1based(vda)
+#     print(f"[INIT] Desktop REAL ao iniciar (sem trocar): {actual_desktop_start}")
+# else:
+actual_desktop_start = CENTER_DESKTOP
 
 # Estado interno do autômato (1/2/3). Só fixamos no 1º pacote.
 current_desktop = CENTER_DESKTOP
